@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.xhzb</groupId>
+        <artifactId>xhzb</artifactId>
+        <version>3.9.0</version>
+    </parent>
+
+    <artifactId>xhzb-ai</artifactId>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!--导入common-->
+        <dependency>
+            <groupId>com.xhzb</groupId>
+            <artifactId>xhzb-common</artifactId>
+        </dependency>
+
+        <!--导入spring-ai的openAI相关的起步依赖-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <!--导入spring-ai的ollama相关的起步依赖-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
+
+        <!--导入xhzb-nursing-->
+        <dependency>
+            <groupId>com.xhzb</groupId>
+            <artifactId>xhzb-nursing-platform</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

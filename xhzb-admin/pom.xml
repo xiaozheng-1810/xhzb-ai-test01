@@ -54,6 +54,26 @@
             <artifactId>xhzb-nursing-platform</artifactId>
         </dependency>
 
+
+        <!-- OkHttp 4.x，Java8+可用 -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.12.0</version>
+        </dependency>
+        <!-- JSON序列化，可选，生产建议带上 -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+
+        <!--注册xhzb-ai模块-->
+        <dependency>
+            <groupId>com.xhzb</groupId>
+            <artifactId>xhzb-ai</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

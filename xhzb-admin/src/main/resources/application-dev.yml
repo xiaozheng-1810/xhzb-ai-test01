@@ -21,9 +21,30 @@ logging:
   level:
     com.xhzb: debug
     org.springframework: warn
+# 开启spring-ai的简单日志
+    org.springframework.ai: DEBUG
 
 # Spring配置
+
 spring:
+  threads:
+    virtual:
+      enabled: true  # 开启虚拟线程 ,jdk21的新特性, 要求boot至少3.2.x以上
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: qwen3.5:9b
+          temperature: 0.7
+
+    openai:
+      api-key: ${BAI_LIAN_API_KEY}  #读取环境变量中的api key
+      base-url: https://llm-gv5lpmj6kqtxcxrj.cn-beijing.maas.aliyuncs.com/compatible-mode # 换成正确的base-url
+      chat:
+        options:
+          model: qwen3.8-27b # 换成正确对应的模型
+          temperature: 0.7
   # 资源信息
   messages:
     # 国际化资源文件路径
@@ -79,4 +100,6 @@ oss:
   endpoint: oss-cn-beijing.aliyuncs.com
   accessKeyId: ${OSS_ACCESS_KEY_ID}
   accessKeySecret: ${OSS_ACCESS_KEY_SECRET}
-  bucketName: itcastwu
+  bucketName: aiapp9
+
+
