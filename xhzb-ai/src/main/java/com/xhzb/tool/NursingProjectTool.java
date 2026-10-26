@@ -1,6 +1,5 @@
 package com.xhzb.tool;
 
-import com.xhzb.nursing.domain.vo.NursingLevelVo;
 import com.xhzb.nursing.domain.vo.NursingProjectVo;
 import com.xhzb.nursing.service.INursingProjectService;
 import org.springframework.ai.tool.annotation.Tool;

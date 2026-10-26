@@ -25,11 +25,7 @@ logging:
     org.springframework.ai: DEBUG
 
 # Spring配置
-
 spring:
-  threads:
-    virtual:
-      enabled: true  # 开启虚拟线程 ,jdk21的新特性, 要求boot至少3.2.x以上
   ai:
     ollama:
       base-url: http://localhost:11434
@@ -39,8 +35,9 @@ spring:
           temperature: 0.7
 
     openai:
-      api-key: ${BAI_LIAN_API_KEY}  #读取环境变量中的api key
-      base-url: https://llm-gv5lpmj6kqtxcxrj.cn-beijing.maas.aliyuncs.com/compatible-mode # 换成正确的base-url
+      # api-key: ${BAI_LIAN_API_KEY}  #读取环境变量中的api key
+      api-key: sk-ws-H.YDPXRIY.ulIS.MEYCIQDB1lkMg4ApDIqacZxEdPkE5wdRD5eyCsIEKJb47SFSkAIhAIXM-3jYRHtTW41H6PJAbxqWyC_8m6C11xu7q0qUmVK_
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:
           model: qwen3.8-27b # 换成正确对应的模型
@@ -100,6 +97,6 @@ oss:
   endpoint: oss-cn-beijing.aliyuncs.com
   accessKeyId: ${OSS_ACCESS_KEY_ID}
   accessKeySecret: ${OSS_ACCESS_KEY_SECRET}
-  bucketName: aiapp9
+  bucketName: itcast-hechao
 
 

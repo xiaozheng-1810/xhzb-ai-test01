@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="xhzb-common" />
+        <module name="xhzb-framework" />
+        <module name="xhzb-quartz" />
+        <module name="xhzb-ai" />
+        <module name="xhzb-oss" />
+        <module name="xhzb-admin" />
+        <module name="xhzb-generator" />
+        <module name="xhzb-nursing-platform" />
+        <module name="xhzb-system" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel target="17" />
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="xhzb" options="-parameters" />
+      <module name="xhzb-admin" options="-parameters" />
+      <module name="xhzb-ai" options="-parameters" />
+      <module name="xhzb-common" options="-parameters" />
+      <module name="xhzb-framework" options="-parameters" />
+      <module name="xhzb-generator" options="-parameters" />
+      <module name="xhzb-nursing-platform" options="-parameters" />
+      <module name="xhzb-oss" options="-parameters" />
+      <module name="xhzb-quartz" options="-parameters" />
+      <module name="xhzb-system" options="-parameters" />
+    </option>
+  </component>
+</project>

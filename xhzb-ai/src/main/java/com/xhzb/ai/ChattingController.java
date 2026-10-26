@@ -1,9 +1,6 @@
 package com.xhzb.ai;
 
-
-import jakarta.annotation.Resource;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,10 +17,11 @@ public class ChattingController {
     @Qualifier("openai")
     private ChatClient chatClient;
 
-  /*  @PostMapping("/chat")
-    public String chatting(String prompt, String chatId) {
-        return chatClient.prompt(prompt).call().content();
-    }*/
+    /*  @PostMapping("/chat")
+      public String chatting(String prompt, String chatId) {
+          return chatClient.prompt(prompt).call().content();
+      }*/
+
     @PostMapping("/chat")
     public Flux<String> chatting(String prompt, String chatId) {
         Flux<String> content = chatClient
