@@ -21,7 +21,7 @@ public class ChattingController {
 
     //注入ChatClient聊天客户端对象
     @Autowired
-    @Qualifier("deepseekai")
+    @Qualifier("ollamaai")
     private ChatClient chatClient;
 
     /*  @PostMapping("/chat")
