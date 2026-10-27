@@ -5,10 +5,13 @@ import com.xhzb.tool.NursingProjectTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.deepseek.DeepSeekChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,13 +65,22 @@ public class ChatClientConfig {
     }
 
     @Bean("deepseekai")
-    public ChatClient deepseekChatClient(ChatMemory chatMemory) {
+    public ChatClient deepseekChatClient(ChatMemory chatMemory,
+                                         VectorStore vectorStore) {
         // 构建聊天客户端, 必须有模型的参数, 才能构建, 还可以设置其他的重要的参数
-        return
-                ChatClient.builder(deepSeekChatModel)
+        return ChatClient.builder(deepSeekChatModel)
                         .defaultSystem(Constants.PROMPT)// 配置系统提示词
                         .defaultTools(nursingProjectTool)// 配置技能
-                        .defaultAdvisors(new SimpleLoggerAdvisor(), MessageChatMemoryAdvisor.builder(chatMemory).build())  //添加默认的advisor 记录日志
+                        .defaultAdvisors(new SimpleLoggerAdvisor(),
+                                MessageChatMemoryAdvisor.builder(chatMemory)
+                                        .build(),
+                                QuestionAnswerAdvisor.builder(vectorStore)
+                                        .searchRequest(SearchRequest.builder()
+                                                .similarityThreshold(0.8)
+                                                .topK(1)
+                                                .build())
+                        //添加默认的advisor 记录日志
+                                        .build())
                         .build();
     }
 }

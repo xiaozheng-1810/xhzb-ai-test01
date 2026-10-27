@@ -47,11 +47,7 @@
             <artifactId>spring-ai-starter-model-deepseek</artifactId>
         </dependency>
 
-        <!-- Spring AI Redis向量存储 Starter（核心） -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-vector-store-redis</artifactId>
-        </dependency>
+
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -60,8 +56,9 @@
 
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-pdf-document-reader</artifactId>
+            <artifactId>spring-ai-advisors-vector-store</artifactId>
         </dependency>
+
     </dependencies>
 
 </project>
