@@ -48,8 +48,12 @@ spring:
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:
-          model: qwen3.8-27b # 换成正确对应的模型
+          model: qwen3.7-max
           temperature: 0.7
+      embedding:
+        options:
+          model: qwen3.7-text-embedding
+          dimensions: 1024
   # 资源信息
   messages:
     # 国际化资源文件路径
