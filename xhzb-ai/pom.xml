@@ -40,6 +40,12 @@
             <groupId>com.xhzb</groupId>
             <artifactId>xhzb-nursing-platform</artifactId>
         </dependency>
+
+        <!-- 导入deepseek的ai相关依赖 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-deepseek</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

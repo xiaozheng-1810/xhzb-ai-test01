@@ -34,9 +34,17 @@ spring:
           model: qwen3.5:9b
           temperature: 0.7
 
+    deepseek:
+      base-url: https://api.deepseek.com
+      api-key: ${DEEPSEEK_API_KEY}
+      chat:
+        options:
+          model: deepseek-flash
+          temperature: 0.7
+
     openai:
       # api-key: ${BAI_LIAN_API_KEY}  #读取环境变量中的api key
-      api-key: sk-ws-H.YDPXRIY.ulIS.MEYCIQDB1lkMg4ApDIqacZxEdPkE5wdRD5eyCsIEKJb47SFSkAIhAIXM-3jYRHtTW41H6PJAbxqWyC_8m6C11xu7q0qUmVK_
+      api-key: ${BAI_LIAN_API_KEY}
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:
@@ -97,6 +105,6 @@ oss:
   endpoint: oss-cn-beijing.aliyuncs.com
   accessKeyId: ${OSS_ACCESS_KEY_ID}
   accessKeySecret: ${OSS_ACCESS_KEY_SECRET}
-  bucketName: itcast-hechao
+  bucketName: xiaozheng01
 
 

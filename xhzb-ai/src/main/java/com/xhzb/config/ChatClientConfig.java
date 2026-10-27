@@ -3,6 +3,10 @@ package com.xhzb.config;
 import com.xhzb.constants.Constants;
 import com.xhzb.tool.NursingProjectTool;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.deepseek.DeepSeekChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +33,9 @@ public class ChatClientConfig {
     private OllamaChatModel ollamaChatModel;
 
     @Autowired
+    private DeepSeekChatModel deepSeekChatModel;
+
+    @Autowired
     private NursingProjectTool nursingProjectTool;
 
 
@@ -39,6 +46,7 @@ public class ChatClientConfig {
                 ChatClient.builder(openAiChatModel)
                         .defaultSystem(Constants.PROMPT) // 配置系统提示词
                         .defaultTools(nursingProjectTool)// 配置技能
+                        .defaultAdvisors(new SimpleLoggerAdvisor())  //添加默认的advisor 记录日志
                         .build();
     }
 
@@ -49,6 +57,18 @@ public class ChatClientConfig {
                 ChatClient.builder(ollamaChatModel)
                         .defaultSystem(Constants.PROMPT)// 配置系统提示词
                         .defaultTools(nursingProjectTool)// 配置技能
+                        .defaultAdvisors(new SimpleLoggerAdvisor())  //添加默认的advisor 记录日志
+                        .build();
+    }
+
+    @Bean("deepseekai")
+    public ChatClient deepseekChatClient(ChatMemory chatMemory) {
+        // 构建聊天客户端, 必须有模型的参数, 才能构建, 还可以设置其他的重要的参数
+        return
+                ChatClient.builder(deepSeekChatModel)
+                        .defaultSystem(Constants.PROMPT)// 配置系统提示词
+                        .defaultTools(nursingProjectTool)// 配置技能
+                        .defaultAdvisors(new SimpleLoggerAdvisor(), MessageChatMemoryAdvisor.builder(chatMemory).build())  //添加默认的advisor 记录日志
                         .build();
     }
 }
