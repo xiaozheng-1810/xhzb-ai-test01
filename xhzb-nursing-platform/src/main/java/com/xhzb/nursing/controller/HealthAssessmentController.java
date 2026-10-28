@@ -1,6 +1,8 @@
 package com.xhzb.nursing.controller;
 
 import java.util.List;
+
+import com.xhzb.nursing.domain.dto.health.ElderAssessmentDto;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,9 +86,9 @@ public class HealthAssessmentController extends BaseController
     @Log(title = "健康评估记录", businessType = BusinessType.INSERT)
     @PostMapping
     @Operation(summary = "新增健康评估记录")
-    public AjaxResult add(@RequestBody HealthAssessment healthAssessment)
+    public AjaxResult add(@RequestBody ElderAssessmentDto elderAssessmentDto)
     {
-        return toAjax(healthAssessmentService.insertHealthAssessment(healthAssessment));
+        return success(healthAssessmentService.insertOrUpdateHealthAssessment(elderAssessmentDto));
     }
 
     /**
@@ -96,9 +98,9 @@ public class HealthAssessmentController extends BaseController
     @Log(title = "健康评估记录", businessType = BusinessType.UPDATE)
     @PutMapping
     @Operation(summary = "修改健康评估记录")
-    public AjaxResult edit(@RequestBody HealthAssessment healthAssessment)
+    public AjaxResult edit(@RequestBody ElderAssessmentDto elderAssessmentDto)
     {
-        return toAjax(healthAssessmentService.updateHealthAssessment(healthAssessment));
+        return success(healthAssessmentService.insertOrUpdateHealthAssessment(elderAssessmentDto));
     }
 
     /**
