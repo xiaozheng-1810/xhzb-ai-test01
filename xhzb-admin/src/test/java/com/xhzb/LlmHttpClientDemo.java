@@ -10,9 +10,10 @@ public class LlmHttpClientDemo {
 
     // 改成你的大模型接口地址，兼容 OpenAI 格式
     //private static final String API_URL = "https://api.minimax.cn/v1/chat/completions";
-    private static final String API_URL = "https://llm-gv5lpmj6kqtxcxrj.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions";
+    // 标准接口地址去掉/chat/completions不行
+    private static final String API_URL = "https://ws-vrngnjf9izwfyzrq.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions";
     // 替换为你的key
-    private static  String API_KEY ;
+    private static String API_KEY ;
 
     public static void main(String[] args) {
 
