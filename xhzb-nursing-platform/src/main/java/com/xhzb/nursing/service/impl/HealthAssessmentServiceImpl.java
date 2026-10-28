@@ -1,14 +1,22 @@
 package com.xhzb.nursing.service.impl;
 
+import java.util.Date;
 import java.util.List;
 
 import cn.hutool.json.JSONUtil;
 import com.xhzb.common.exception.base.BaseException;
 import com.xhzb.common.utils.DateUtils;
+import com.xhzb.nursing.config.HealthAIConfig;
+import com.xhzb.nursing.constant.PromptConstant;
 import com.xhzb.nursing.domain.HealthAssessmentDataCollection;
+import com.xhzb.nursing.domain.HealthAssessmentReport;
 import com.xhzb.nursing.domain.dto.health.ElderAssessmentDto;
 
+import com.xhzb.nursing.domain.vo.ElderLevelResultVO;
 import com.xhzb.nursing.service.IHealthAssessmentDataCollectionService;
+import com.xhzb.nursing.service.IHealthAssessmentReportService;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.xhzb.nursing.mapper.HealthAssessmentMapper;
@@ -154,5 +162,91 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
     public int deleteHealthAssessmentById(Long id)
     {
         return removeById(id)? 1 : 0;
+    }
+
+    @Autowired
+    private ChatClient healthChatClient;
+
+    @Autowired
+    private IHealthAssessmentReportService reportService;
+    @Override
+    public Long assessmentData(ElderAssessmentDto elderAssessmentDto) {
+        // 完整评估流程步骤
+        // 1.更新保存评估数据: 接收前端提交的老人评估表单，把本次评估的基础表单数据保存或者更新到数据库。
+        this.insertOrUpdateHealthAssessment(elderAssessmentDto);
+
+        // 2.提取各项能力数据: 从表单里面抽取出四大模块评估结果： 日常生活活动等级、精神状态等级、感知觉与沟通等级、社会参与等级。 把 “能力完好、轻度受损、中度受损、重度受损” 这类文字等级转换为对应数字编码。 同时提取配套风险信息：近 30 天跌倒、噎食、自杀尝试、走失、昏迷发生次数，是否患有痴呆、精神疾病，画钟测试结果，全部收集齐全，供 AI 分析使用。
+        String dailyLivingLevel = this.getLevel(elderAssessmentDto.getDailyLivingActivities().getAbilityRating());
+        String mentalLevel = this.getLevel(elderAssessmentDto.getMentalState().getAbilityRating());
+        String perceptionLevel = this.getLevel(elderAssessmentDto.getPerceptionAndCommunication().getAbilityRating());
+        String socialLevel = this.getLevel(elderAssessmentDto.getSocialParticipation().getAbilityRating());
+        Integer fallCount = elderAssessmentDto.getHealthAssessmentDto().getRecent30Days().getFall();
+        Integer chockingCount = elderAssessmentDto.getHealthAssessmentDto().getRecent30Days().getChoking();
+        Integer suicideCount = elderAssessmentDto.getHealthAssessmentDto().getRecent30Days().getSuicideAttempt();
+        Integer lostCount = elderAssessmentDto.getHealthAssessmentDto().getRecent30Days().getLost();
+        Integer comaCount = elderAssessmentDto.getHealthAssessmentDto().getRecent30Days().getComa();
+        int dementia = elderAssessmentDto.getHealthAssessmentDto().getDiseaseDiagnosis().getDementia().equals("无") ? 0 : 1;
+        int mentalIllness = elderAssessmentDto.getHealthAssessmentDto().getDiseaseDiagnosis().getMentalIllness().equals("无") ? 0 : 1;
+        int clockDrawingTest = elderAssessmentDto.getMentalState().getClockDrawingTest().getResult() == 2 ? 1 : 0;
+
+        // 3.第一阶段 AI分析老人多维度能力评估
+        //    1）使用收集好的老人各项评估信息，拼接组装 AI 提示词 prompt，带上评估规则。
+        String healthPrompt = String.format(PromptConstant.HEALTH_PROMPT, dailyLivingLevel, mentalLevel, perceptionLevel, socialLevel, fallCount, chockingCount, suicideCount,lostCount, comaCount, dementia, mentalIllness, clockDrawingTest);
+        //    2）通过 ChatClient 调用大模型做能力分析。
+        String healthResponse = healthChatClient.prompt().user(healthPrompt).call().content();
+        //    3）处理大模型返回内容，剔除多余文字，只解析出 JSON 格式结果，拿到老人初始能力等级、最终能力等级、等级变化原因。
+        // **把 JSON 格式的字符串 `healthResponse`，转成 Java 对象 `ElderLevelResultVO`**，也就是反序列化。
+        ElderLevelResultVO levelResult = JSONUtil.toBean(healthResponse, ElderLevelResultVO.class);
+        //    4）新建一条健康评估报告记录，把评估基础信息、第一阶段 AI 的分析结果先存入数据库。
+        HealthAssessmentReport report = new HealthAssessmentReport();
+        report.setHealthAssessmentId(elderAssessmentDto.getId());
+        report.setDailyActivityLevel(dailyLivingLevel);
+        report.setMentalStatusLevel(mentalLevel);
+        report.setPerceptionCommunicationLevel(perceptionLevel);
+        report.setSocialParticipationLevel(socialLevel);
+        report.setInitialAbilityLevel(levelResult.getPreLevel());
+        report.setFinalAbilityLevel(levelResult.getFinalLevel());
+        report.setLevelChangeReason(levelResult.getReason());
+        report.setCreateTime(new Date());
+        reportService.save(report);
+
+        return 0L;
+        
+        /*
+4.第二阶段 AI 分析：体检报告分析
+    1）从阿里云 OSS 文件存储下载老人上传的体检 PDF 报告文件。
+    2）读取解析 PDF，提取出体检报告全部文本内容。
+    3）将体检文本内容组装成第二套 AI 提示词 prompt。
+    4）调用大模型对体检报告做专业分析。
+    5）解析 AI 返回结果，拿到健康评分、风险等级、报告总结、身体异常项、各身体系统评分。
+5.保存评估结果到评估结果表
+    把两阶段 AI 产出的全部分析结果回填到评估报告记录中。
+    业务判断规则：
+    1）是否建议入住判断规则：健康评分≥60 分，标记为建议入住；低于 60 不建议入住。
+    2）依据健康分数计算建议护理等级：90 分以上三级护理，80 以上二级，70 以上一级，60 以上特级，低于 60 不建议入住。
+    3）评估报告表记录入住状态统一标记为未入住。
+    4）健康评估报告表所有字段根据实际情况，该有值的尽量都赋值
+6.更新评估主记录的状态与入住建议，修改评估主表数据，写入是否建议入住的标记，把评估进度设置为【评估已完成】。
+7.返回评估 ID 整个业务流程结束，返回本次评估记录的唯一ID。
+        * */
+    }
+
+    public String getLevel(String ability){
+        String level = "";
+        switch (ability){
+            case "能力完好":
+                level = "0";
+                break;
+            case "轻度受损":
+                level = "1";
+                break;
+            case "中度受损":
+                level = "2";
+                break;
+            case "重度受损":
+                level = "3";
+                break;
+        }
+        return level;
     }
 }

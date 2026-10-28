@@ -33,6 +33,10 @@ spring:
         options:
           model: qwen3.5:9b
           temperature: 0.7
+      embedding:
+        options:
+          model: qwen3-embedding:0.6b
+          dimensions: 1024
 
     deepseek:
       base-url: https://api.deepseek.com

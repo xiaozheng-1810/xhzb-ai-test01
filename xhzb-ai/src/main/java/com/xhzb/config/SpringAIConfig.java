@@ -1,5 +1,6 @@
 package com.xhzb.config;
 
+
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.redis.RedisVectorStore;
@@ -9,7 +10,6 @@ import redis.clients.jedis.JedisPooled;
 
 @Configuration
 public class SpringAIConfig {
-
     @Bean
     public VectorStore redisVectorStore(OpenAiEmbeddingModel openAiEmbeddingModel) {
         JedisPooled jedisPooled = new JedisPooled("192.168.100.168",6378);
@@ -19,4 +19,5 @@ public class SpringAIConfig {
                 .initializeSchema(true) //应用启动自动创建索引，首次启动true；生产关闭自动建索引false
                 .build();
     }
+
 }

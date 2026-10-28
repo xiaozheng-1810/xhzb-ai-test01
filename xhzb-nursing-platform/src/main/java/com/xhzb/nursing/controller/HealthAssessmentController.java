@@ -114,4 +114,10 @@ public class HealthAssessmentController extends BaseController
     {
         return toAjax(healthAssessmentService.deleteHealthAssessmentByIds(ids));
     }
+
+    @PostMapping("/assessmentData")
+    public AjaxResult assessmentData(@RequestBody ElderAssessmentDto elderAssessmentDto)
+    {
+        return success(healthAssessmentService.assessmentData(elderAssessmentDto));
+    }
 }

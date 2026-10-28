@@ -61,4 +61,6 @@ public interface IHealthAssessmentService extends IService<HealthAssessment>
      * @return 结果
      */
     public int deleteHealthAssessmentById(Long id);
+
+    Long assessmentData(ElderAssessmentDto elderAssessmentDto);
 }

@@ -21,12 +21,12 @@ public class HealthAssessmentReport extends BaseEntity
 
     /** 主键ID */
     @Schema(title = "主键ID")
-    private String id;
+    private Integer id;
 
     /** 健康评估ID */
     @Schema(title = "健康评估ID")
     @Excel(name = "健康评估ID")
-    private String healthAssessmentId;
+    private Long healthAssessmentId;
 
     /** 评估时间 */
     @Schema(title = "评估时间")

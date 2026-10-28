@@ -43,24 +43,44 @@ public class ChatClientConfig {
 
 
     @Bean("openai")
-    public ChatClient openAIChatClient( ) {
+    public ChatClient openAIChatClient(ChatMemory chatMemory,
+                                       VectorStore vectorStore ) {
         // 构建聊天客户端, 必须有模型的参数, 才能构建, 还可以设置其他的重要的参数
         return
                 ChatClient.builder(openAiChatModel)
-                        .defaultSystem(Constants.PROMPT) // 配置系统提示词
+                        .defaultSystem(Constants.PROMPT)// 配置系统提示词
                         .defaultTools(nursingProjectTool)// 配置技能
-                        .defaultAdvisors(new SimpleLoggerAdvisor())  //添加默认的advisor 记录日志
+                        .defaultAdvisors(new SimpleLoggerAdvisor(),
+                                MessageChatMemoryAdvisor.builder(chatMemory)
+                                        .build(),
+                                QuestionAnswerAdvisor.builder(vectorStore)
+                                        .searchRequest(SearchRequest.builder()
+                                                .similarityThreshold(0.8)
+                                                .topK(1)
+                                                .build())
+                                        //添加默认的advisor 记录日志
+                                        .build())
                         .build();
     }
 
     @Bean("ollamaai")
-    public ChatClient ollamaChatClient() {
+    public ChatClient ollamaChatClient(ChatMemory chatMemory,
+                                       VectorStore vectorStore) {
         // 构建聊天客户端, 必须有模型的参数, 才能构建, 还可以设置其他的重要的参数
         return
                 ChatClient.builder(ollamaChatModel)
                         .defaultSystem(Constants.PROMPT)// 配置系统提示词
                         .defaultTools(nursingProjectTool)// 配置技能
-                        .defaultAdvisors(new SimpleLoggerAdvisor())  //添加默认的advisor 记录日志
+                        .defaultAdvisors(new SimpleLoggerAdvisor(),
+                                MessageChatMemoryAdvisor.builder(chatMemory)
+                                        .build(),
+                                QuestionAnswerAdvisor.builder(vectorStore)
+                                        .searchRequest(SearchRequest.builder()
+                                                .similarityThreshold(0.8)
+                                                .topK(1)
+                                                .build())
+                                        //添加默认的advisor 记录日志
+                                        .build())
                         .build();
     }
 
@@ -71,10 +91,10 @@ public class ChatClientConfig {
         return ChatClient.builder(deepSeekChatModel)
                         .defaultSystem(Constants.PROMPT)// 配置系统提示词
                         .defaultTools(nursingProjectTool)// 配置技能
-                        .defaultAdvisors(new SimpleLoggerAdvisor(),
+                        .defaultAdvisors(new SimpleLoggerAdvisor(), // 添加默认的advisor 记录日志
                                 MessageChatMemoryAdvisor.builder(chatMemory)
                                         .build(),
-                                QuestionAnswerAdvisor.builder(vectorStore)
+                                QuestionAnswerAdvisor.builder(vectorStore) // 检索向量数据库中的向量
                                         .searchRequest(SearchRequest.builder()
                                                 .similarityThreshold(0.8)
                                                 .topK(1)
