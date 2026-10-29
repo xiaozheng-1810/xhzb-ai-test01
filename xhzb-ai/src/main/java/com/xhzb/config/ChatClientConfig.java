@@ -55,8 +55,8 @@ public class ChatClientConfig {
                                         .build(),
                                 QuestionAnswerAdvisor.builder(vectorStore)
                                         .searchRequest(SearchRequest.builder()
-                                                .similarityThreshold(0.8)
-                                                .topK(1)
+                                                .similarityThreshold(0.7)
+                                                .topK(3)
                                                 .build())
                                         //添加默认的advisor 记录日志
                                         .build())
@@ -76,8 +76,8 @@ public class ChatClientConfig {
                                         .build(),
                                 QuestionAnswerAdvisor.builder(vectorStore)
                                         .searchRequest(SearchRequest.builder()
-                                                .similarityThreshold(0.8)
-                                                .topK(1)
+                                                .similarityThreshold(0.7)
+                                                .topK(3)
                                                 .build())
                                         //添加默认的advisor 记录日志
                                         .build())
@@ -96,8 +96,8 @@ public class ChatClientConfig {
                                         .build(),
                                 QuestionAnswerAdvisor.builder(vectorStore) // 检索向量数据库中的向量
                                         .searchRequest(SearchRequest.builder()
-                                                .similarityThreshold(0.8)
-                                                .topK(1)
+                                                .similarityThreshold(0.7)
+                                                .topK(3)
                                                 .build())
                         //添加默认的advisor 记录日志
                                         .build())

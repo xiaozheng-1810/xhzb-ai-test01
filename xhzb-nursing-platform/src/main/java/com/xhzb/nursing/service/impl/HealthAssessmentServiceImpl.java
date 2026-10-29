@@ -18,12 +18,7 @@ import com.xhzb.nursing.domain.HealthAssessment;
 import com.xhzb.nursing.domain.HealthAssessmentDataCollection;
 import com.xhzb.nursing.domain.HealthAssessmentReport;
 import com.xhzb.nursing.domain.dto.health.BasicInfo;
-import com.xhzb.nursing.domain.dto.health.DailyLivingActivities;
 import com.xhzb.nursing.domain.dto.health.ElderAssessmentDto;
-import com.xhzb.nursing.domain.dto.health.HealthAssessmentDto;
-import com.xhzb.nursing.domain.dto.health.MentalState;
-import com.xhzb.nursing.domain.dto.health.PerceptionAndCommunication;
-import com.xhzb.nursing.domain.dto.health.SocialParticipation;
 import com.xhzb.nursing.domain.vo.ElderInfoVO;
 import com.xhzb.nursing.domain.vo.ElderLevelResultVO;
 import com.xhzb.nursing.domain.vo.HealthReportResultVO;
@@ -55,29 +50,20 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
     private IHealthAssessmentDataCollectionService healthAssessmentDataCollectionService;
 
     /**
-     * 查看评估详情（表单回显）
+     * 查看评估详情（表单回显，字段为 JSON 字符串，前端自行解析）
      *
      * @param id 健康评估记录主键
-     * @return 表单嵌套结构
+     * @return 健康评估采集数据
      */
     @Override
-    public ElderAssessmentDto selectHealthAssessmentById(Long id)
+    public HealthAssessmentDataCollection selectHealthAssessmentById(Long id)
     {
         // 采集表主键与评估主键相同，直接按 id 查询
         HealthAssessmentDataCollection collection = healthAssessmentDataCollectionService.getById(id);
         if (collection == null) {
             throw new BaseException("评估表单数据不存在");
         }
-
-        ElderAssessmentDto dto = new ElderAssessmentDto();
-        dto.setId(collection.getId());
-        dto.setBasicInfo(parseFormJson(collection.getBasicInfo(), BasicInfo.class));
-        dto.setHealthAssessmentDto(parseFormJson(collection.getHealthAssessment(), HealthAssessmentDto.class));
-        dto.setDailyLivingActivities(parseFormJson(collection.getDailyLivingActivities(), DailyLivingActivities.class));
-        dto.setMentalState(parseFormJson(collection.getMentalState(), MentalState.class));
-        dto.setPerceptionAndCommunication(parseFormJson(collection.getPerceptionCommunication(), PerceptionAndCommunication.class));
-        dto.setSocialParticipation(parseFormJson(collection.getSocialParticipation(), SocialParticipation.class));
-        return dto;
+        return collection;
     }
 
     /**

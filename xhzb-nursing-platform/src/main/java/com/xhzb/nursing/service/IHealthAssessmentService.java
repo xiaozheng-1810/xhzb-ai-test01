@@ -3,6 +3,7 @@ package com.xhzb.nursing.service;
 import java.util.List;
 import com.xhzb.nursing.domain.HealthAssessment;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.xhzb.nursing.domain.HealthAssessmentDataCollection;
 import com.xhzb.nursing.domain.HealthAssessmentReport;
 import com.xhzb.nursing.domain.dto.health.ElderAssessmentDto;
 import com.xhzb.nursing.domain.vo.ElderInfoVO;
@@ -16,12 +17,12 @@ import com.xhzb.nursing.domain.vo.ElderInfoVO;
 public interface IHealthAssessmentService extends IService<HealthAssessment>
 {
     /**
-     * 查看评估详情（表单回显）
+     * 查看评估详情（表单回显，字段为 JSON 字符串，前端自行解析）
      *
      * @param id 健康评估记录主键
-     * @return 表单嵌套结构
+     * @return 健康评估采集数据
      */
-    public ElderAssessmentDto selectHealthAssessmentById(Long id);
+    public HealthAssessmentDataCollection selectHealthAssessmentById(Long id);
 
     /**
      * 查询健康评估记录列表
