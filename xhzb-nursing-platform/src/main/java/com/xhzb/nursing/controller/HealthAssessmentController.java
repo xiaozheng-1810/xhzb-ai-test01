@@ -115,6 +115,7 @@ public class HealthAssessmentController extends BaseController
         return toAjax(healthAssessmentService.deleteHealthAssessmentByIds(ids));
     }
 
+    // AI评估数据
     @PostMapping("/assessmentData")
     public AjaxResult assessmentData(@RequestBody ElderAssessmentDto elderAssessmentDto)
     {

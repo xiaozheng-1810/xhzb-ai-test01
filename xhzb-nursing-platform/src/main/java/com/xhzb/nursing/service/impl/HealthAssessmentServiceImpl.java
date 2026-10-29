@@ -8,7 +8,6 @@ import cn.hutool.json.JSONUtil;
 import com.xhzb.common.exception.base.BaseException;
 import com.xhzb.common.utils.DateUtils;
 import com.xhzb.common.utils.PDFUtil;
-import com.xhzb.nursing.config.HealthAIConfig;
 import com.xhzb.nursing.constant.PromptConstant;
 import com.xhzb.nursing.domain.HealthAssessmentDataCollection;
 import com.xhzb.nursing.domain.HealthAssessmentReport;
@@ -20,7 +19,6 @@ import com.xhzb.nursing.service.IHealthAssessmentDataCollectionService;
 import com.xhzb.nursing.service.IHealthAssessmentReportService;
 import com.xhzb.oss.client.OSSAliyunFileStorageService;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.xhzb.nursing.mapper.HealthAssessmentMapper;
@@ -92,8 +90,7 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
             //1.2 新增健康评估记录
             this.save(assessment);
         } else {
-            //2. 健康评估记录ID有值处理逻辑
-
+            //2. 健康评估记录ID有值处理逻辑(实质变为修改)
             //2.1 根据ID查询健康评估记录
             HealthAssessment healthAssessment = this.getById(elderAssessmentDto.getId());
 
@@ -108,13 +105,16 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
             }
 
             //2.4 更新健康评估记录
+            // 更新的时候前端会传入健康评估记录ID，所以这里直接使用传入的ID
             assessment.setId(elderAssessmentDto.getId());
             this.updateById(assessment);
         }
 
-        //3.  封装健康评估数据收集对象
+        //3.  封装健康评估数据采集对象
         HealthAssessmentDataCollection collection = new HealthAssessmentDataCollection();
         collection.setId(assessment.getId()); //主键ID
+        // hutool工具中的json转换方法,进行序列化把对象转换成json字符串
+        // eg: {"name":"张三","age":78,"address":"XX养老院"}
         collection.setBasicInfo(JSONUtil.toJsonStr(elderAssessmentDto.getBasicInfo())); //基本信息
         collection.setHealthAssessment(JSONUtil.toJsonStr(elderAssessmentDto.getHealthAssessmentDto()));//健康评估信息
         collection.setDailyLivingActivities(JSONUtil.toJsonStr(elderAssessmentDto.getDailyLivingActivities()));//日常活动
