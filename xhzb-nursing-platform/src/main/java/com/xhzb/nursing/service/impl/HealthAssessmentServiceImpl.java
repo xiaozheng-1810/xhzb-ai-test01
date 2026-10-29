@@ -1,11 +1,13 @@
 package com.xhzb.nursing.service.impl;
 
+import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
 
 import cn.hutool.json.JSONUtil;
 import com.xhzb.common.exception.base.BaseException;
 import com.xhzb.common.utils.DateUtils;
+import com.xhzb.common.utils.PDFUtil;
 import com.xhzb.nursing.config.HealthAIConfig;
 import com.xhzb.nursing.constant.PromptConstant;
 import com.xhzb.nursing.domain.HealthAssessmentDataCollection;
@@ -13,8 +15,10 @@ import com.xhzb.nursing.domain.HealthAssessmentReport;
 import com.xhzb.nursing.domain.dto.health.ElderAssessmentDto;
 
 import com.xhzb.nursing.domain.vo.ElderLevelResultVO;
+import com.xhzb.nursing.domain.vo.HealthReportResultVO;
 import com.xhzb.nursing.service.IHealthAssessmentDataCollectionService;
 import com.xhzb.nursing.service.IHealthAssessmentReportService;
+import com.xhzb.oss.client.OSSAliyunFileStorageService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -169,6 +173,9 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
 
     @Autowired
     private IHealthAssessmentReportService reportService;
+
+    @Autowired
+    private OSSAliyunFileStorageService storageService;
     @Override
     public Long assessmentData(ElderAssessmentDto elderAssessmentDto) {
         // 完整评估流程步骤
@@ -193,6 +200,13 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
         //    1）使用收集好的老人各项评估信息，拼接组装 AI 提示词 prompt，带上评估规则。
         String healthPrompt = String.format(PromptConstant.HEALTH_PROMPT, dailyLivingLevel, mentalLevel, perceptionLevel, socialLevel, fallCount, chockingCount, suicideCount,lostCount, comaCount, dementia, mentalIllness, clockDrawingTest);
         //    2）通过 ChatClient 调用大模型做能力分析。
+        /*
+        * 1. **healthChatClient**：预先配置好的 SpringAI 对话客户端，里面绑定了模型地址、密钥、系统提示词、参数
+        * 2. **.prompt()**：新建一次对话请求构造器，开始组装这次给大模型的请求
+        * 3. **.user(healthPrompt)**：设置【用户消息】，`healthPrompt`就是你拼好的评估文本、要求模型输出 JSON 的指令
+        * 4. **.call()**：**同步发起请求，阻塞等待大模型返回完整结果**
+        * 5. **.content()**：直接提取模型返回的文本字符串；模型无输出时会返回 null
+        一句话串起来：用预先配置好的 AI 客户端，组装用户提示词，同步调用模型，拿到模型返回的文本。*/
         String healthResponse = healthChatClient.prompt().user(healthPrompt).call().content();
         //    3）处理大模型返回内容，剔除多余文字，只解析出 JSON 格式结果，拿到老人初始能力等级、最终能力等级、等级变化原因。
         // **把 JSON 格式的字符串 `healthResponse`，转成 Java 对象 `ElderLevelResultVO`**，也就是反序列化。
@@ -208,27 +222,46 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
         report.setFinalAbilityLevel(levelResult.getFinalLevel());
         report.setLevelChangeReason(levelResult.getReason());
         report.setCreateTime(new Date());
+
+//        4.第二阶段 AI 分析：体检报告分析
+//        1）从阿里云 OSS 文件存储下载老人上传的体检 PDF 报告文件。
+        InputStream inputStream = storageService.download(elderAssessmentDto.getHealthAssessmentDto().getRecent30Days().getMedicalReport());
+//        2）读取解析 PDF，提取出体检报告全部文本内容。
+        String healthReport = PDFUtil.pdfToString(inputStream);
+//        3）将体检文本内容组装成第二套 AI 提示词 prompt。
+        String healthReportPrompt = String.format(PromptConstant.HEALTH_REPORT_PROMPT, healthReport);
+//        4）调用大模型对体检报告做专业分析。
+        String healthReportResponse = healthChatClient.prompt().user(healthReportPrompt).call().content();
+//        5）解析 AI 返回结果，拿到健康评分、风险等级、报告总结、身体异常项、各身体系统评分。
+        HealthReportResultVO healthReportResult = JSONUtil.toBean(healthReportResponse, HealthReportResultVO.class);
+
+//        5.保存评估结果到评估结果表,把两阶段 AI 产出的全部分析结果回填到评估报告记录中。
+//        业务判断规则：
+//        1）是否建议入住判断规则：健康评分≥60 分，标记为建议入住；低于 60 不建议入住。
+        int coreSuggestion = healthReportResult.getHealthScore() >= 60 ? 1 : 0;
+        report.setCoreSuggestion(coreSuggestion);
+//        2）依据健康分数计算建议护理等级：90 分以上三级护理，80 以上二级，70 以上一级，60 以上特级，低于 60 不建议入住。
+        report.setRecommendedCareLevel(getRecommendedCareLevel(healthReportResult.getHealthScore()));
+//        3）评估报告表记录入住状态统一标记为未入住。
+        report.setCheckInStatus(0);
+//        4）健康评估报告表所有字段根据实际情况，该有值的尽量都赋值
+        report.setHealthScore(healthReportResult.getHealthScore().toString()); // 设置健康评分
+        report.setRiskLevel(healthReportResult.getRiskLevel()); // 设置风险等级
+        report.setReportSummary(healthReportResult.getSummarize()); // 设置报告总结
+        report.setAbnormalAnalysis(JSONUtil.toJsonStr(healthReportResult.getAbnormalData())); // 设置异常分析
+        report.setSystemScore(JSONUtil.toJsonStr(healthReportResult.getSystemScore())); // 设置八大系统分值
         reportService.save(report);
 
-        return 0L;
-        
-        /*
-4.第二阶段 AI 分析：体检报告分析
-    1）从阿里云 OSS 文件存储下载老人上传的体检 PDF 报告文件。
-    2）读取解析 PDF，提取出体检报告全部文本内容。
-    3）将体检文本内容组装成第二套 AI 提示词 prompt。
-    4）调用大模型对体检报告做专业分析。
-    5）解析 AI 返回结果，拿到健康评分、风险等级、报告总结、身体异常项、各身体系统评分。
-5.保存评估结果到评估结果表
-    把两阶段 AI 产出的全部分析结果回填到评估报告记录中。
-    业务判断规则：
-    1）是否建议入住判断规则：健康评分≥60 分，标记为建议入住；低于 60 不建议入住。
-    2）依据健康分数计算建议护理等级：90 分以上三级护理，80 以上二级，70 以上一级，60 以上特级，低于 60 不建议入住。
-    3）评估报告表记录入住状态统一标记为未入住。
-    4）健康评估报告表所有字段根据实际情况，该有值的尽量都赋值
-6.更新评估主记录的状态与入住建议，修改评估主表数据，写入是否建议入住的标记，把评估进度设置为【评估已完成】。
-7.返回评估 ID 整个业务流程结束，返回本次评估记录的唯一ID。
-        * */
+//        6.更新评估主记录的状态与入住建议，修改评估主表数据，写入是否建议入住的标记，把评估进度设置为【评估已完成】。
+        HealthAssessment assessment = new HealthAssessment();
+        assessment.setId(elderAssessmentDto.getId());
+        assessment.setCheckInStatus(0); // 入住状态设置为：未入住
+        assessment.setCoreSuggestion(coreSuggestion); // 是否建议入住
+        assessment.setEvaluationProgress(1); // 评估进度设置为：已完成
+        this.updateById(assessment); // 更新评估主记录
+
+//        7.返回评估 ID 整个业务流程结束，返回本次评估记录的唯一ID。
+        return elderAssessmentDto.getId();
     }
 
     public String getLevel(String ability){
@@ -248,5 +281,19 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
                 break;
         }
         return level;
+    }
+
+    // 2）依据健康分数计算建议护理等级：90 分以上三级护理，80 以上二级，70 以上一级，60 以上特级，低于 60 不建议入住。
+    private String getRecommendedCareLevel(Double healthScore){
+        if (healthScore >= 90){
+            return "三级护理";
+        }else if (healthScore >= 80){
+            return "二级护理";
+        }else if (healthScore >= 70){
+            return "一级护理";
+        }else if (healthScore >= 60){
+            return "特级护理";
+        }
+        return "不建议入住";
     }
 }

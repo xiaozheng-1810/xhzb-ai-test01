@@ -70,7 +70,7 @@ public class PromptConstant {
     /**
      * 第二次AI交互的用户提示词（体检报告的智能分析）
      */
-    public static final String USER_PROMPT2 = """
+    public static final String HEALTH_REPORT_PROMPT = """
             请以一个专业医生的视角来分析这份体检报告，报告中包含了一些异常数据，我需要您对这些数据进行解读，并给出相应的健康建议。
             体检内容如下：
             
