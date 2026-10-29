@@ -1,31 +1,42 @@
 package com.xhzb.nursing.service.impl;
 
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xhzb.common.exception.base.BaseException;
 import com.xhzb.common.utils.DateUtils;
 import com.xhzb.common.utils.PDFUtil;
 import com.xhzb.nursing.constant.PromptConstant;
+import com.xhzb.nursing.domain.HealthAssessment;
 import com.xhzb.nursing.domain.HealthAssessmentDataCollection;
 import com.xhzb.nursing.domain.HealthAssessmentReport;
+import com.xhzb.nursing.domain.dto.health.BasicInfo;
+import com.xhzb.nursing.domain.dto.health.DailyLivingActivities;
 import com.xhzb.nursing.domain.dto.health.ElderAssessmentDto;
-
+import com.xhzb.nursing.domain.dto.health.HealthAssessmentDto;
+import com.xhzb.nursing.domain.dto.health.MentalState;
+import com.xhzb.nursing.domain.dto.health.PerceptionAndCommunication;
+import com.xhzb.nursing.domain.dto.health.SocialParticipation;
+import com.xhzb.nursing.domain.vo.ElderInfoVO;
 import com.xhzb.nursing.domain.vo.ElderLevelResultVO;
 import com.xhzb.nursing.domain.vo.HealthReportResultVO;
+import com.xhzb.nursing.mapper.HealthAssessmentMapper;
 import com.xhzb.nursing.service.IHealthAssessmentDataCollectionService;
 import com.xhzb.nursing.service.IHealthAssessmentReportService;
+import com.xhzb.nursing.service.IHealthAssessmentService;
 import com.xhzb.oss.client.OSSAliyunFileStorageService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.xhzb.nursing.mapper.HealthAssessmentMapper;
-import com.xhzb.nursing.domain.HealthAssessment;
-import com.xhzb.nursing.service.IHealthAssessmentService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import java.util.Arrays;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 健康评估记录Service业务层处理
@@ -33,6 +44,7 @@ import java.util.Arrays;
  * @author xiaozheng
  * @date 2026-10-28
  */
+@Slf4j
 @Service
 public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMapper, HealthAssessment> implements IHealthAssessmentService
 {
@@ -43,15 +55,49 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
     private IHealthAssessmentDataCollectionService healthAssessmentDataCollectionService;
 
     /**
-     * 查询健康评估记录
-     * 
+     * 查看评估详情（表单回显）
+     *
      * @param id 健康评估记录主键
-     * @return 健康评估记录
+     * @return 表单嵌套结构
      */
     @Override
-    public HealthAssessmentDataCollection selectHealthAssessmentById(Long id)
+    public ElderAssessmentDto selectHealthAssessmentById(Long id)
     {
-        return healthAssessmentDataCollectionService.getById(id);
+        // 采集表主键与评估主键相同，直接按 id 查询
+        HealthAssessmentDataCollection collection = healthAssessmentDataCollectionService.getById(id);
+        if (collection == null) {
+            throw new BaseException("评估表单数据不存在");
+        }
+
+        ElderAssessmentDto dto = new ElderAssessmentDto();
+        dto.setId(collection.getId());
+        dto.setBasicInfo(parseFormJson(collection.getBasicInfo(), BasicInfo.class));
+        dto.setHealthAssessmentDto(parseFormJson(collection.getHealthAssessment(), HealthAssessmentDto.class));
+        dto.setDailyLivingActivities(parseFormJson(collection.getDailyLivingActivities(), DailyLivingActivities.class));
+        dto.setMentalState(parseFormJson(collection.getMentalState(), MentalState.class));
+        dto.setPerceptionAndCommunication(parseFormJson(collection.getPerceptionCommunication(), PerceptionAndCommunication.class));
+        dto.setSocialParticipation(parseFormJson(collection.getSocialParticipation(), SocialParticipation.class));
+        return dto;
+    }
+
+    /**
+     * 解析采集表中存储的表单 JSON
+     *
+     * @param json  表单 JSON 字符串
+     * @param clazz 目标类型
+     * @return 解析结果，空值或解析失败时返回 null
+     */
+    private <T> T parseFormJson(String json, Class<T> clazz)
+    {
+        if (StrUtil.isBlank(json) || "null".equalsIgnoreCase(json.trim())) {
+            return null;
+        }
+        try {
+            return JSONUtil.toBean(json, clazz);
+        } catch (Exception e) {
+            log.warn("解析健康评估表单数据失败，json={}", json, e);
+            return null;
+        }
     }
 
     /**
@@ -68,7 +114,8 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
 
     /**
      * 新增健康评估记录
-     * 
+     *
+     *
      * @param elderAssessmentDto 健康评估记录
      * @return 结果
      */
@@ -145,27 +192,164 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
     }*/
 
     /**
-     * 批量删除健康评估记录
-     * 
+     * 批量删除健康评估记录（级联删除采集明细和评估报告）
+     *
      * @param ids 需要删除的健康评估记录主键
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteHealthAssessmentByIds(Long[] ids)
     {
-        return removeByIds(Arrays.asList(ids))? 1 : 0;
+        return doDelete(ids);
     }
 
     /**
-     * 删除健康评估记录信息
-     * 
+     * 删除健康评估记录信息（级联删除采集明细和评估报告）
+     *
      * @param id 健康评估记录主键
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteHealthAssessmentById(Long id)
     {
-        return removeById(id)? 1 : 0;
+        return doDelete(new Long[]{id});
+    }
+
+    /**
+     * 级联删除评估主记录、采集明细和评估报告
+     *
+     * @param ids 健康评估记录主键数组
+     * @return 结果
+     */
+    private int doDelete(Long[] ids)
+    {
+        if (ids == null || ids.length == 0) {
+            throw new BaseException("请选择要删除的健康评估记录");
+        }
+
+        List<Long> idList = Arrays.asList(ids);
+        // 部分 ID 不存在时删除存在的记录，全部不存在时给出明确提示
+        long count = this.count(Wrappers.<HealthAssessment>lambdaQuery().in(HealthAssessment::getId, idList));
+        if (count == 0) {
+            throw new BaseException("健康评估记录不存在");
+        }
+
+        // 先删子表，再删主表，数据库无外键，级联完整性由这里保证
+        reportService.remove(Wrappers.<HealthAssessmentReport>lambdaQuery()
+                .in(HealthAssessmentReport::getHealthAssessmentId, idList));
+        healthAssessmentDataCollectionService.removeByIds(idList);
+        return removeByIds(idList) ? 1 : 0;
+    }
+
+    /**
+     * 取消健康评估
+     *
+     * @param id 健康评估记录主键
+     * @return 结果
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int cancelHealthAssessment(Long id)
+    {
+        HealthAssessment assessment = this.getById(id);
+        if (assessment == null) {
+            throw new BaseException("健康评估记录不存在");
+        }
+        if (Objects.equals(assessment.getCheckInStatus(), 1)) {
+            throw new BaseException("老人已入住，无法取消评估");
+        }
+
+        Integer progress = assessment.getEvaluationProgress();
+        if (progress == null) {
+            throw new BaseException("评估进度数据异常，无法取消");
+        }
+        if (progress == 1) {
+            throw new BaseException("评估已完成，无法取消");
+        }
+        if (progress == 2) {
+            throw new BaseException("评估已取消，请勿重复操作");
+        }
+
+        // 条件更新，避免并发操作把已变更的状态覆盖掉
+        HealthAssessment update = new HealthAssessment();
+        update.setEvaluationProgress(2);
+        boolean updated = this.update(update, Wrappers.<HealthAssessment>lambdaUpdate()
+                .eq(HealthAssessment::getId, id)
+                .eq(HealthAssessment::getEvaluationProgress, 0));
+        if (!updated) {
+            throw new BaseException("评估状态已变更，请刷新后重试");
+        }
+        return 1;
+    }
+
+    /**
+     * 查看评估结果（同一评估有多条报告时取最新一条）
+     *
+     * @param assessmentId 健康评估记录主键
+     * @return 评估报告，未生成时返回 null
+     */
+    @Override
+    public HealthAssessmentReport selectLatestReportByAssessmentId(Long assessmentId)
+    {
+        if (this.getById(assessmentId) == null) {
+            throw new BaseException("健康评估记录不存在");
+        }
+        return reportService.getOne(Wrappers.<HealthAssessmentReport>lambdaQuery()
+                .eq(HealthAssessmentReport::getHealthAssessmentId, assessmentId)
+                .orderByDesc(HealthAssessmentReport::getId)
+                .last("LIMIT 1"));
+    }
+
+    /**
+     * 查看老人信息详情（入住字段填充）
+     *
+     * @param assessmentId 健康评估记录主键
+     * @return 老人入住信息
+     */
+    @Override
+    public ElderInfoVO selectElderInfoByAssessmentId(Long assessmentId)
+    {
+        HealthAssessment assessment = this.getById(assessmentId);
+        if (assessment == null) {
+            throw new BaseException("健康评估记录不存在");
+        }
+
+        ElderInfoVO vo = new ElderInfoVO();
+        // 主表字段先作为兜底值
+        vo.setCoreSuggestion(assessment.getCoreSuggestion());
+        vo.setName(assessment.getElderName());
+        vo.setIdCardNo(assessment.getIdCard());
+
+        HealthAssessmentDataCollection collection = healthAssessmentDataCollectionService.getById(assessmentId);
+        if (collection == null) {
+            log.warn("健康评估采集数据不存在，assessmentId={}", assessmentId);
+            return vo;
+        }
+
+        BasicInfo basicInfo = parseFormJson(collection.getBasicInfo(), BasicInfo.class);
+        if (basicInfo == null) {
+            log.warn("健康评估基本信息为空或解析失败，assessmentId={}", assessmentId);
+            return vo;
+        }
+
+        vo.setPhone(basicInfo.getElderContact());
+        vo.setMedicalPaymentMethod(basicInfo.getMedicalPaymentMethod());
+        vo.setNation(basicInfo.getNation());
+        vo.setEducationLevel(basicInfo.getEducationLevel());
+        vo.setSocialSecurityCard(basicInfo.getSocialSecurityCard());
+        vo.setLivingSituation(basicInfo.getLivingSituation());
+        vo.setReligiousBelief(basicInfo.getReligiousBelief());
+        vo.setEconomicSource(basicInfo.getEconomicSource());
+        vo.setMaritalStatus(basicInfo.getMaritalStatus());
+        if (StrUtil.isNotBlank(basicInfo.getElderName())) {
+            vo.setName(basicInfo.getElderName());
+        }
+        if (StrUtil.isNotBlank(basicInfo.getIdCard())) {
+            vo.setIdCardNo(basicInfo.getIdCard());
+        }
+        return vo;
     }
 
     @Autowired
@@ -180,7 +364,8 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
     public Long assessmentData(ElderAssessmentDto elderAssessmentDto) {
         // 完整评估流程步骤
         // 1.更新保存评估数据: 接收前端提交的老人评估表单，把本次评估的基础表单数据保存或者更新到数据库。
-        this.insertOrUpdateHealthAssessment(elderAssessmentDto);
+        // 新增时数据库自增主键已由 MyBatis-Plus 回填到主记录实体，这里直接使用方法返回值，后续报告和主记录更新都基于该 ID
+        long assessmentId = this.insertOrUpdateHealthAssessment(elderAssessmentDto);
 
         // 2.提取各项能力数据: 从表单里面抽取出四大模块评估结果： 日常生活活动等级、精神状态等级、感知觉与沟通等级、社会参与等级。 把 “能力完好、轻度受损、中度受损、重度受损” 这类文字等级转换为对应数字编码。 同时提取配套风险信息：近 30 天跌倒、噎食、自杀尝试、走失、昏迷发生次数，是否患有痴呆、精神疾病，画钟测试结果，全部收集齐全，供 AI 分析使用。
         String dailyLivingLevel = this.getLevel(elderAssessmentDto.getDailyLivingActivities().getAbilityRating());
@@ -213,7 +398,7 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
         ElderLevelResultVO levelResult = JSONUtil.toBean(healthResponse, ElderLevelResultVO.class);
         //    4）新建一条健康评估报告记录，把评估基础信息、第一阶段 AI 的分析结果先存入数据库。
         HealthAssessmentReport report = new HealthAssessmentReport();
-        report.setHealthAssessmentId(elderAssessmentDto.getId());
+        report.setHealthAssessmentId(assessmentId);
         report.setDailyActivityLevel(dailyLivingLevel);
         report.setMentalStatusLevel(mentalLevel);
         report.setPerceptionCommunicationLevel(perceptionLevel);
@@ -254,14 +439,14 @@ public class HealthAssessmentServiceImpl extends ServiceImpl<HealthAssessmentMap
 
 //        6.更新评估主记录的状态与入住建议，修改评估主表数据，写入是否建议入住的标记，把评估进度设置为【评估已完成】。
         HealthAssessment assessment = new HealthAssessment();
-        assessment.setId(elderAssessmentDto.getId());
+        assessment.setId(assessmentId);
         assessment.setCheckInStatus(0); // 入住状态设置为：未入住
         assessment.setCoreSuggestion(coreSuggestion); // 是否建议入住
         assessment.setEvaluationProgress(1); // 评估进度设置为：已完成
         this.updateById(assessment); // 更新评估主记录
 
 //        7.返回评估 ID 整个业务流程结束，返回本次评估记录的唯一ID。
-        return elderAssessmentDto.getId();
+        return assessmentId;
     }
 
     public String getLevel(String ability){

@@ -68,15 +68,52 @@ public class HealthAssessmentController extends BaseController
     }
 
     /**
-     * 获取健康评估记录详细信息
+     * 查看评估详情（表单回显）
      */
     @PreAuthorize("@ss.hasPermi('nursing:healthAssessment:query')")
     @GetMapping(value = "/{id}")
-    @Operation(summary = "获取健康评估记录详细信息")
+    @Operation(summary = "查看评估详情")
     public AjaxResult getInfo(@Schema(name = "健康评估记录ID", requiredMode = Schema.RequiredMode.REQUIRED)
             @PathVariable("id") Long id)
     {
         return success(healthAssessmentService.selectHealthAssessmentById(id));
+    }
+
+    /**
+     * 查看评估详情（评估结果）
+     */
+    @PreAuthorize("@ss.hasPermi('nursing:healthAssessment:query')")
+    @GetMapping("/report/{id}")
+    @Operation(summary = "查看评估详情(评估结果)")
+    public AjaxResult getReport(@Schema(name = "健康评估记录ID", requiredMode = Schema.RequiredMode.REQUIRED)
+            @PathVariable("id") Long id)
+    {
+        return success(healthAssessmentService.selectLatestReportByAssessmentId(id));
+    }
+
+    /**
+     * 查看老人信息详情（入住字段填充）
+     */
+    @PreAuthorize("@ss.hasPermi('nursing:healthAssessment:query')")
+    @GetMapping("/elder/{id}")
+    @Operation(summary = "查看老人信息详情(入住字段填充)")
+    public AjaxResult getElderInfo(@Schema(name = "健康评估记录ID", requiredMode = Schema.RequiredMode.REQUIRED)
+            @PathVariable("id") Long id)
+    {
+        return success(healthAssessmentService.selectElderInfoByAssessmentId(id));
+    }
+
+    /**
+     * 评估取消
+     */
+    @PreAuthorize("@ss.hasPermi('nursing:healthAssessment:edit')")
+    @Log(title = "健康评估记录", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}")
+    @Operation(summary = "评估取消")
+    public AjaxResult cancel(@Schema(name = "健康评估记录ID", requiredMode = Schema.RequiredMode.REQUIRED)
+            @PathVariable("id") Long id)
+    {
+        return toAjax(healthAssessmentService.cancelHealthAssessment(id));
     }
 
     /**
